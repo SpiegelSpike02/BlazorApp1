@@ -1,0 +1,129 @@
+﻿@page "/sale"
+@rendermode InteractiveServer
+@using OfficeOpenXml
+@using OfficeOpenXml.Attributes
+@using System.ComponentModel
+@using BlazorApp1.Shared
+@inject IJSRuntime JS
+
+
+<PageTitle>销售流向</PageTitle>
+
+<button class="btn btn-primary" @onclick="DownloadExcel">
+    导出流向
+</button>
+
+@if (sellItems == null)
+{
+    <p><em>载入中...</em></p>
+}
+else
+{
+    <table class="table">
+    <thead>
+        <tr class="table-success">
+            <th>销售日期</th>
+            <th>销售编号</th>
+            <th>客户名称</th>
+            <th>商品编号</th>
+            <th>商品名称</th>
+            <th>商品规格</th>
+            <th>生产厂家</th>
+            <th>单位</th>
+            <th>销售数量</th>
+            <th>商品批号</th>
+            <th>有效日期</th>
+            <th>生产日期</th>
+            <th>售价</th>
+            <th>金额</th>
+            <th>摘要</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in sellItems)
+            {
+                <tr>
+                    <td>@(item.SellDate.ToShortDateString())</td>
+                    <td>@item.SellCode</td>
+                    <td>@item.ClientName</td>
+                    <td>@item.ProductCode</td>
+                    <td>@item.ProductName</td>
+                    <td>@item.Specs</td>
+                    <td>@item.ProducerName</td>
+                    <td>@item.Unit</td>
+                    <td>@item.Number</td>
+                    <td>@item.BatchCode</td>
+                    <td>@(item.ValidityDate.ToShortDateString())</td>
+                    <td>@(item.ProductionDate.ToShortDateString())</td>
+                    <td>@item.RetailPrice</td>
+                    <td>@item.TotalPrice</td>
+                    <td>@item.Summary</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private SellItem[]? sellItems;
+    protected override async Task OnInitializedAsync()
+    {
+        string path = @"wwwroot/excel/sale/";
+        DirectoryInfo root = new(path);
+        foreach (FileInfo f in root.GetFiles())
+        {
+            if (f.Name.Contains(".xlsx"))
+            {
+                await Task.Delay(500);
+                using ExcelPackage package = new(f);
+                var ws = package.Workbook.Worksheets.FirstOrDefault();
+                sellItems = [];
+                if (ws != null)
+                {
+                    IEnumerable<SellItem> exportedItems =
+                    ws.Cells[$"A{ws.Dimension.Start.Row}:O{ws.Dimension.End.Row}"].ToCollectionWithMappings<SellItem>(row =>
+                    {
+                        return new SellItem
+                            {
+                                SellDate = row.GetValue<DateTime>("销售日期"),
+                                ClientName = row.GetValue<string?>("客户名称"),
+                                ProductName = row.GetValue<string?>("商品名称"),
+                                Specs = row.GetValue<string?>("商品规格"),
+                                ProducerName = row.GetValue<string?>("生产厂家"),
+                                Unit = row.GetValue<string?>("单位"),
+                                BatchCode = row.GetValue<string?>("商品批号"),
+                                ProductionDate = row.GetValue<DateTime>("生产日期"),
+                                ValidityDate = row.GetValue<DateTime>("有效日期"),
+                                Number = row.GetValue<int?>("销售数量"),
+                                RetailPrice = row.GetValue<decimal?>("售价"),
+                                TotalPrice = row.GetValue<decimal?>("金额"),
+                                Summary = row.GetValue<string?>("摘要"),
+                                ProductCode = row.GetValue<string?>("商品编号")
+                            };
+                    }, options =>
+                    {
+                        // 0-based index of the Header row in the range, if applicable. This is an int? and a null value means there is no header row.
+                        options.HeaderRow = 0;
+                        // 0-based index of the data start row in the range. This is an int? and null value means the data rows starts direcly after the header row.
+                        options.DataStartRow = 1;
+                        options.SetCustomHeaders("销售日期", "销售编号", "客户名称", "商品编号", "商品名称", "商品规格", "生产厂家", "单位", "销售数量", "商品批号", "有效日期", "生产日期", "售价", "金额", "摘要");
+                    });
+                    sellItems = sellItems.Concat(exportedItems).ToArray();
+                }
+            }
+        }
+    }
+    
+    async Task DownloadExcel()
+    {
+        using var package = new ExcelPackage();
+        var sheet = package.Workbook.Worksheets.Add("Sheet1");
+        sheet.Cells["A1"].LoadFromCollection<SellItem>(sellItems, c => c.PrintHeaders = true);
+        sheet.Cells.AutoFitColumns();
+        var fileStream = new MemoryStream(package.GetAsByteArray());
+        var fileName = "流向.xlsx";
+        using var streamRef = new DotNetStreamReference(stream: fileStream);
+        await JS.InvokeVoidAsync("downloadFileFromStream", fileName, streamRef);
+        StateHasChanged();
+    }
+}

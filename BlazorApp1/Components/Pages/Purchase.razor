@@ -1,0 +1,103 @@
+@page "/purchase"
+@using OfficeOpenXml
+@using OfficeOpenXml.Attributes
+@using System.ComponentModel
+@using BlazorApp1.Shared
+@attribute [StreamRendering]
+
+<PageTitle>入库流向</PageTitle>
+
+@if (purchaseItems == null)
+{
+    <p><em>载入中...</em></p>
+}
+else
+{
+    <table class="table">
+    <thead>
+        <tr class="table-success">
+            <th>入库日期</th>
+            <th>供应商</th>
+            <th>供应商编码</th>
+            <th>品名</th>
+            <th>规格</th>
+            <th>厂家</th>
+            <th>商品编码</th>
+            <th>数量</th>
+            <th>单位</th>
+            <th>价格</th>
+            <th>金额</th>
+            <th>批号</th>
+            <th>保质日期</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in purchaseItems)
+            {
+                <tr>
+                    <td>@(item.PurchaseDate.ToShortDateString())</td>
+                    <td>@item.ProviderName</td>
+                    <td>@item.ProviderCode</td>
+                    <td>@item.ProductName</td>
+                    <td>@item.Specs</td>
+                    <td>@item.ProducerName</td>
+                    <td>@item.ProductCode</td>
+                    <td>@item.Number</td>
+                    <td>@item.Unit</td>
+                    <td>@item.RetailPrice</td>
+                    <td>@item.TotalPrice</td>
+                    <td>@item.BatchCode</td>
+                    <td>@(item.ValidityDate.ToShortDateString())</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private PurchaseItem[]? purchaseItems;
+    protected override async Task OnInitializedAsync()
+    {
+        string path = @"wwwroot/excel/purchase/";
+        DirectoryInfo root = new(path);
+        foreach (FileInfo f in root.GetFiles())
+        {
+            if (f.Name.Contains(".xlsx"))
+            {
+                await Task.Delay(500);
+                using ExcelPackage package = new(f);
+                var ws = package.Workbook.Worksheets.FirstOrDefault();
+                purchaseItems = [];
+                if (ws != null)
+                {
+                    IEnumerable<PurchaseItem> exportedItems =
+                    ws.Cells[$"A{ws.Dimension.Start.Row}:O{ws.Dimension.End.Row}"].ToCollectionWithMappings<PurchaseItem>(row =>
+                    {
+                        return new PurchaseItem
+                            {
+                                PurchaseDate = row.GetValue<DateTime>("入库日期"),
+                                ProductName = row.GetValue<string?>("品名"),
+                                Specs = row.GetValue<string?>("规格"),
+                                ProducerName = row.GetValue<string?>("厂家"),
+                                Unit = row.GetValue<string?>("单位"),
+                                BatchCode = row.GetValue<string?>("批号"),
+                                ValidityDate = row.GetValue<DateTime>("保质日期"),
+                                Number = row.GetValue<int?>("数量"),
+                                RetailPrice = row.GetValue<decimal?>("价格"),
+                                TotalPrice = row.GetValue<decimal?>("金额"),
+                                ProductCode = row.GetValue<string?>("商品编码")
+                            };
+                    }, options =>
+                    {
+                        // 0-based index of the Header row in the range, if applicable. This is an int? and a null value means there is no header row.
+                        options.HeaderRow = 0;
+                        // 0-based index of the data start row in the range. This is an int? and null value means the data rows starts direcly after the header row.
+                        options.DataStartRow = 1;
+                        options.SetCustomHeaders("销售日期", "销售编号", "客户名称", "商品编号", "商品名称", "商品规格", "生产厂家", "单位", "销售数量", "商品批号", "有效日期", "生产日期", "售价", "金额", "摘要");
+                    });
+                    purchaseItems = purchaseItems.Concat(exportedItems).ToArray();
+                }
+            }
+        }
+    }
+}
