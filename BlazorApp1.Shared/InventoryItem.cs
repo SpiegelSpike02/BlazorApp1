@@ -11,7 +11,7 @@ namespace BlazorApp1.Shared
         public string? ProviderCode { get; set; }
         [DisplayName("品名")]
         public string? ProductName { get; set; }
-        [DisplayName("商品编号")]
+        [DisplayName("商品编码")]
         public string? ProductCode { get; set; }
         [DisplayName("规格")]
         public string? Specs { get; set; }

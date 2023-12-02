@@ -85,7 +85,9 @@ else
                                 Number = row.GetValue<int?>("数量"),
                                 RetailPrice = row.GetValue<decimal?>("价格"),
                                 TotalPrice = row.GetValue<decimal?>("金额"),
-                                ProductCode = row.GetValue<string?>("商品编码")
+                                ProductCode = row.GetValue<string?>("商品编码"),
+                                ProviderCode = row.GetValue<string?>("供应商编码"),
+                                ProviderName = row.GetValue<string?>("供应商")                                
                             };
                     }, options =>
                     {
@@ -93,7 +95,7 @@ else
                         options.HeaderRow = 0;
                         // 0-based index of the data start row in the range. This is an int? and null value means the data rows starts direcly after the header row.
                         options.DataStartRow = 1;
-                        options.SetCustomHeaders("销售日期", "销售编号", "客户名称", "商品编号", "商品名称", "商品规格", "生产厂家", "单位", "销售数量", "商品批号", "有效日期", "生产日期", "售价", "金额", "摘要");
+                        options.SetCustomHeaders("入库日期", "供应商", "供应商编码", "品名", "规格", "厂家", "商品编码", "数量", "单位", "价格", "金额", "批号", "保质日期");
                     });
                     purchaseItems = purchaseItems.Concat(exportedItems).ToArray();
                 }
