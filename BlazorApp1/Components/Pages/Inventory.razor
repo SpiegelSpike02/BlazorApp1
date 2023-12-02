@@ -57,22 +57,16 @@ else
     protected override async Task OnInitializedAsync()
     {
 
-        try
-        {
-            Context = ItemDbContextFactory.CreateDbContext();
+        Context = ItemDbContextFactory.CreateDbContext();
 
-            if (Context is not null && Context.Items is not null)
+        if (Context is not null && Context.Items is not null)
+        {
+            var _ = await Context.Items.ToListAsync();
+
+            if (_ is not null)
             {
-                var _ = await Context.Items.ToListAsync();
-
-                if (_ is not null)
-                {
-                    Items = _;
-                }
+                Items = _;
             }
-        }
-        finally
-        {
         }
 
         await base.OnInitializedAsync();
