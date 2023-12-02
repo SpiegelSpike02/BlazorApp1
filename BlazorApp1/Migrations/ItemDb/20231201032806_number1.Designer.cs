@@ -4,6 +4,7 @@ using BlazorApp1.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BlazorApp1.Migrations.ItemDb
 {
     [DbContext(typeof(ItemDbContext))]
-    partial class ItemDbContextModelSnapshot : ModelSnapshot
+    [Migration("20231201032806_number1")]
+    partial class number1
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -31,9 +34,7 @@ namespace BlazorApp1.Migrations.ItemDb
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("Number")
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("int")
-                        .HasComputedColumnSql("dbo.CalculateNumberFunction([ProductCode])");
+                        .HasColumnType("int");
 
                     b.Property<string>("ProducerName")
                         .HasColumnType("nvarchar(max)");
@@ -67,7 +68,6 @@ namespace BlazorApp1.Migrations.ItemDb
                         .HasColumnType("date");
 
                     b.Property<string>("OperationItemProductCode")
-                        .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
                     b.Property<int>("OperationName")
@@ -100,9 +100,7 @@ namespace BlazorApp1.Migrations.ItemDb
                 {
                     b.HasOne("BlazorApp1.Data.Item", "OperationItem")
                         .WithMany("Records")
-                        .HasForeignKey("OperationItemProductCode")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("OperationItemProductCode");
 
                     b.Navigation("OperationItem");
                 });

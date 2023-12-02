@@ -3,17 +3,20 @@
 @using OfficeOpenXml
 @using OfficeOpenXml.Attributes
 @using System.ComponentModel
-@using BlazorApp1.Shared
+@using BlazorApp1.Data
+@using Microsoft.EntityFrameworkCore
 @inject IJSRuntime JS
+@inject IDbContextFactory<ItemDbContext> ItemDbContextFactory
+@implements IDisposable
 
 
 <PageTitle>销售流向</PageTitle>
 
-<button class="btn btn-primary" @onclick="DownloadExcel">
+@* <button class="btn btn-primary" @onclick="DownloadExcel">
     导出流向
-</button>
+</button> *@
 
-@if (sellItems == null)
+@if (Records == null)
 {
     <p><em>载入中...</em></p>
 }
@@ -25,6 +28,7 @@ else
             <th>销售日期</th>
             <th>销售编号</th>
             <th>客户名称</th>
+            <th>客户编号</th>
             <th>商品编号</th>
             <th>商品名称</th>
             <th>商品规格</th>
@@ -40,24 +44,25 @@ else
         </tr>
     </thead>
     <tbody>
-        @foreach (var item in sellItems)
+        @foreach (var record in Records)
             {
                 <tr>
-                    <td>@(item.SellDate.ToShortDateString())</td>
-                    <td>@item.SellCode</td>
-                    <td>@item.ClientName</td>
-                    <td>@item.ProductCode</td>
-                    <td>@item.ProductName</td>
-                    <td>@item.Specs</td>
-                    <td>@item.ProducerName</td>
-                    <td>@item.Unit</td>
-                    <td>@item.Number</td>
-                    <td>@item.BatchCode</td>
-                    <td>@(item.ValidityDate.ToShortDateString())</td>
-                    <td>@(item.ProductionDate.ToShortDateString())</td>
-                    <td>@item.RetailPrice</td>
-                    <td>@item.TotalPrice</td>
-                    <td>@item.Summary</td>
+                    <td>@(record.OperationDate.ToShortDateString())</td>
+                    <td>@record.OperationCode</td>
+                    <td>@record.OperationTarget</td>
+                    <td>@record.OperationTargetCode</td>
+                    <td>@record.OperationItem.ProductCode</td>
+                    <td>@record.OperationItem.ProductName</td>
+                    <td>@record.OperationItem.Specs</td>
+                    <td>@record.OperationItem.ProducerName</td>
+                    <td>@record.OperationItem.Unit</td>
+                    <td>@record.OperationNumber</td>
+                    <td>@record.OperationItem.BatchCode</td>
+                    <td>@(record.OperationItem.ValidityDate.ToShortDateString())</td>
+                    <td>@(record.OperationItem.ProductionDate.ToShortDateString())</td>
+                    <td>@record.Price</td>
+                    <td>@(record.Price*record.OperationNumber)</td>
+                    <td>@record.Summary</td>
                 </tr>
             }
         </tbody>
@@ -65,65 +70,37 @@ else
 }
 
 @code {
-    private SellItem[]? sellItems;
+    private ItemDbContext? Context;
+    private List<Record>? Records;
     protected override async Task OnInitializedAsync()
     {
-        string path = @"wwwroot/excel/sale/";
-        DirectoryInfo root = new(path);
-        foreach (FileInfo f in root.GetFiles())
+        try
         {
-            if (f.Name.Contains(".xlsx"))
+            Context = ItemDbContextFactory.CreateDbContext();
+
+            if (Context is not null && Context.Records is not null)
             {
-                await Task.Delay(500);
-                using ExcelPackage package = new(f);
-                var ws = package.Workbook.Worksheets.FirstOrDefault();
-                sellItems = [];
-                if (ws != null)
+                var saleRecords = await Context.Records.Where(r => r.OperationName == Operation.Sell).Include(r => r.OperationItem).ToListAsync();
+
+                if (saleRecords is not null)
                 {
-                    IEnumerable<SellItem> exportedItems =
-                    ws.Cells[$"A{ws.Dimension.Start.Row}:O{ws.Dimension.End.Row}"].ToCollectionWithMappings<SellItem>(row =>
-                    {
-                        return new SellItem
-                            {
-                                SellDate = row.GetValue<DateTime>("销售日期"),
-                                ClientName = row.GetValue<string?>("客户名称"),
-                                ProductName = row.GetValue<string?>("商品名称"),
-                                Specs = row.GetValue<string?>("商品规格"),
-                                ProducerName = row.GetValue<string?>("生产厂家"),
-                                Unit = row.GetValue<string?>("单位"),
-                                BatchCode = row.GetValue<string?>("商品批号"),
-                                ProductionDate = row.GetValue<DateTime>("生产日期"),
-                                ValidityDate = row.GetValue<DateTime>("有效日期"),
-                                Number = row.GetValue<int?>("销售数量"),
-                                RetailPrice = row.GetValue<decimal?>("售价"),
-                                TotalPrice = row.GetValue<decimal?>("金额"),
-                                Summary = row.GetValue<string?>("摘要"),
-                                ProductCode = row.GetValue<string?>("商品编号")
-                            };
-                    }, options =>
-                    {
-                        // 0-based index of the Header row in the range, if applicable. This is an int? and a null value means there is no header row.
-                        options.HeaderRow = 0;
-                        // 0-based index of the data start row in the range. This is an int? and null value means the data rows starts direcly after the header row.
-                        options.DataStartRow = 1;
-                        options.SetCustomHeaders("销售日期", "销售编号", "客户名称", "商品编号", "商品名称", "商品规格", "生产厂家", "单位", "销售数量", "商品批号", "有效日期", "生产日期", "售价", "金额", "摘要");
-                    });
-                    sellItems = sellItems.Concat(exportedItems).ToArray();
+                    Records = saleRecords;
                 }
             }
         }
+        finally
+        {
+        }
+
+        await base.OnInitializedAsync();
     }
-    
-    async Task DownloadExcel()
+
+    @* async Task DownloadExcel()
     {
-        using var package = new ExcelPackage();
-        var sheet = package.Workbook.Worksheets.Add("Sheet1");
-        sheet.Cells["A1"].LoadFromCollection<SellItem>(sellItems, c => c.PrintHeaders = true);
-        sheet.Cells.AutoFitColumns();
-        var fileStream = new MemoryStream(package.GetAsByteArray());
-        var fileName = "流向.xlsx";
-        using var streamRef = new DotNetStreamReference(stream: fileStream);
-        await JS.InvokeVoidAsync("downloadFileFromStream", fileName, streamRef);
-        StateHasChanged();
+    } *@
+
+    public void Dispose()
+    {
+        Context?.Dispose();
     }
 }

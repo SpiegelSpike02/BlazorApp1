@@ -23,5 +23,6 @@ public class Item
     public DateTime ValidityDate { get; set; }
     [EpplusTableColumn(NumberFormat = "yyyy-MM-dd", Header = "生产日期"), Column(TypeName = "date")]
     public DateTime ProductionDate { get; set; }
+    public int Number { get; set; }
     public List<Record>? Records { get; set; }
 }

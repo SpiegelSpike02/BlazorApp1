@@ -14,5 +14,8 @@ public class Record
     [Column(TypeName = "decimal(18,2)")]
     public decimal Price { get; set; }
     public string? Summary { get; set; }
+    public required string OperationItemProductCode { get; set; }
     public required Item OperationItem { get; set; }
+    public required string OperationTarget { get; set; }
+    public string? OperationTargetCode { get; set; }
 }

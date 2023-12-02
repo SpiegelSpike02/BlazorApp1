@@ -1,8 +1,89 @@
 @page "/inventory"
+@rendermode InteractiveServer
 @using OfficeOpenXml
 @using OfficeOpenXml.Attributes
 @using System.ComponentModel
-@using BlazorApp1.Shared
-@attribute [StreamRendering]
+@using BlazorApp1.Data
+@using Microsoft.EntityFrameworkCore
+@inject IJSRuntime JS
+@inject IDbContextFactory<ItemDbContext> ItemDbContextFactory
+@implements IDisposable
+
 
 <PageTitle>库存明细</PageTitle>
+
+@if (Items == null)
+{
+    <p><em>载入中...</em></p>
+}
+else
+{
+    <table class="table">
+    <thead>
+        <tr class="table-success">
+            <th>商品编号</th>
+            <th>商品名称</th>
+            <th>商品规格</th>
+            <th>生产厂家</th>
+            <th>单位</th>
+            <th>库存数量</th>
+            <th>商品批号</th>
+            <th>有效日期</th>
+            <th>生产日期</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Items)
+            {
+                <tr>
+                    <td>@item.ProductCode</td>
+                    <td>@item.ProductName</td>
+                    <td>@item.Specs</td>
+                    <td>@item.ProducerName</td>
+                    <td>@item.Unit</td>
+                    <td>@item.Number</td>
+                    <td>@item.BatchCode</td>
+                    <td>@(item.ValidityDate.ToShortDateString())</td>
+                    <td>@(item.ProductionDate.ToShortDateString())</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private ItemDbContext? Context;
+    private List<Item>? Items;
+    protected override async Task OnInitializedAsync()
+    {
+
+        try
+        {
+            Context = ItemDbContextFactory.CreateDbContext();
+
+            if (Context is not null && Context.Items is not null)
+            {
+                var _ = await Context.Items.ToListAsync();
+
+                if (_ is not null)
+                {
+                    Items = _;
+                }
+            }
+        }
+        finally
+        {
+        }
+
+        await base.OnInitializedAsync();
+    }
+
+    @* async Task DownloadExcel()
+{
+} *@
+
+    public void Dispose()
+    {
+        Context?.Dispose();
+    }
+}

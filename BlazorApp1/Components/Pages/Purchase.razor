@@ -1,13 +1,22 @@
 @page "/purchase"
+@rendermode InteractiveServer
 @using OfficeOpenXml
 @using OfficeOpenXml.Attributes
 @using System.ComponentModel
-@using BlazorApp1.Shared
-@attribute [StreamRendering]
+@using BlazorApp1.Data
+@using Microsoft.EntityFrameworkCore
+@inject IJSRuntime JS
+@inject IDbContextFactory<ItemDbContext> ItemDbContextFactory
+@implements IDisposable
+
 
 <PageTitle>入库流向</PageTitle>
 
-@if (purchaseItems == null)
+@* <button class="btn btn-primary" @onclick="DownloadExcel">
+    导出流向
+</button> *@
+
+@if (Records == null)
 {
     <p><em>载入中...</em></p>
 }
@@ -17,37 +26,43 @@ else
     <thead>
         <tr class="table-success">
             <th>入库日期</th>
-            <th>供应商</th>
-            <th>供应商编码</th>
-            <th>品名</th>
-            <th>规格</th>
-            <th>厂家</th>
-            <th>商品编码</th>
-            <th>数量</th>
+            <th>入库编号</th>
+            <th>供应商名称</th>
+            <th>供应商编号</th>
+            <th>商品编号</th>
+            <th>商品名称</th>
+            <th>商品规格</th>
+            <th>生产厂家</th>
             <th>单位</th>
-            <th>价格</th>
+            <th>入库数量</th>
+            <th>商品批号</th>
+            <th>有效日期</th>
+            <th>生产日期</th>
+            <th>进价</th>
             <th>金额</th>
-            <th>批号</th>
-            <th>保质日期</th>
+            <th>摘要</th>
         </tr>
     </thead>
     <tbody>
-        @foreach (var item in purchaseItems)
+        @foreach (var record in Records)
             {
                 <tr>
-                    <td>@(item.PurchaseDate.ToShortDateString())</td>
-                    <td>@item.ProviderName</td>
-                    <td>@item.ProviderCode</td>
-                    <td>@item.ProductName</td>
-                    <td>@item.Specs</td>
-                    <td>@item.ProducerName</td>
-                    <td>@item.ProductCode</td>
-                    <td>@item.Number</td>
-                    <td>@item.Unit</td>
-                    <td>@item.RetailPrice</td>
-                    <td>@item.TotalPrice</td>
-                    <td>@item.BatchCode</td>
-                    <td>@(item.ValidityDate.ToShortDateString())</td>
+                    <td>@(record.OperationDate.ToShortDateString())</td>
+                    <td>@record.OperationCode</td>
+                    <td>@record.OperationTarget</td>
+                    <td>@record.OperationTargetCode</td>
+                    <td>@record.OperationItem.ProductCode</td>
+                    <td>@record.OperationItem.ProductName</td>
+                    <td>@record.OperationItem.Specs</td>
+                    <td>@record.OperationItem.ProducerName</td>
+                    <td>@record.OperationItem.Unit</td>
+                    <td>@record.OperationNumber</td>
+                    <td>@record.OperationItem.BatchCode</td>
+                    <td>@(record.OperationItem.ValidityDate.ToShortDateString())</td>
+                    <td>@(record.OperationItem.ProductionDate.ToShortDateString())</td>
+                    <td>@record.Price</td>
+                    <td>@(record.Price*record.OperationNumber)</td>
+                    <td>@record.Summary</td>
                 </tr>
             }
         </tbody>
@@ -55,51 +70,38 @@ else
 }
 
 @code {
-    private PurchaseItem[]? purchaseItems;
+    private ItemDbContext? Context;
+    private List<Record>? Records;
     protected override async Task OnInitializedAsync()
     {
-        string path = @"wwwroot/excel/purchase/";
-        DirectoryInfo root = new(path);
-        foreach (FileInfo f in root.GetFiles())
+
+        try
         {
-            if (f.Name.Contains(".xlsx"))
+            Context = ItemDbContextFactory.CreateDbContext();
+
+            if (Context is not null && Context.Records is not null)
             {
-                await Task.Delay(500);
-                using ExcelPackage package = new(f);
-                var ws = package.Workbook.Worksheets.FirstOrDefault();
-                purchaseItems = [];
-                if (ws != null)
+                var saleRecords = await Context.Records.Where(r => r.OperationName == Operation.Purchase).Include(r => r.OperationItem).ToListAsync();
+
+                if (saleRecords is not null)
                 {
-                    IEnumerable<PurchaseItem> exportedItems =
-                    ws.Cells[$"A{ws.Dimension.Start.Row}:O{ws.Dimension.End.Row}"].ToCollectionWithMappings<PurchaseItem>(row =>
-                    {
-                        return new PurchaseItem
-                            {
-                                PurchaseDate = row.GetValue<DateTime>("入库日期"),
-                                ProductName = row.GetValue<string?>("品名"),
-                                Specs = row.GetValue<string?>("规格"),
-                                ProducerName = row.GetValue<string?>("厂家"),
-                                Unit = row.GetValue<string?>("单位"),
-                                BatchCode = row.GetValue<string?>("批号"),
-                                ValidityDate = row.GetValue<DateTime>("保质日期"),
-                                Number = row.GetValue<int?>("数量"),
-                                RetailPrice = row.GetValue<decimal?>("价格"),
-                                TotalPrice = row.GetValue<decimal?>("金额"),
-                                ProductCode = row.GetValue<string?>("商品编码"),
-                                ProviderCode = row.GetValue<string?>("供应商编码"),
-                                ProviderName = row.GetValue<string?>("供应商")                                
-                            };
-                    }, options =>
-                    {
-                        // 0-based index of the Header row in the range, if applicable. This is an int? and a null value means there is no header row.
-                        options.HeaderRow = 0;
-                        // 0-based index of the data start row in the range. This is an int? and null value means the data rows starts direcly after the header row.
-                        options.DataStartRow = 1;
-                        options.SetCustomHeaders("入库日期", "供应商", "供应商编码", "品名", "规格", "厂家", "商品编码", "数量", "单位", "价格", "金额", "批号", "保质日期");
-                    });
-                    purchaseItems = purchaseItems.Concat(exportedItems).ToArray();
+                    Records = saleRecords;
                 }
             }
         }
+        finally
+        {
+        }
+
+        await base.OnInitializedAsync();
+    }
+
+    @* async Task DownloadExcel()
+    {
+    } *@
+
+    public void Dispose()
+    {
+        Context?.Dispose();
     }
 }

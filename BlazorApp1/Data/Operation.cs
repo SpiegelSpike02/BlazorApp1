@@ -3,6 +3,6 @@ namespace BlazorApp1.Data;
 
 public enum Operation
 {
-    Sell,
-    Purchase
+    Sell = 0,
+    Purchase = 1
 }
