@@ -12,9 +12,7 @@
 
 <PageTitle>销售流向</PageTitle>
 
-@* <button class="btn btn-primary" @onclick="DownloadExcel">
-    导出流向
-</button> *@
+<InputText @bind-Value="SearchText" @bind-Value:after="SearchAsync" />
 
 @if (Records == null)
 {
@@ -61,7 +59,7 @@ else
                     <td>@(record.OperationItem.ValidityDate.ToShortDateString())</td>
                     <td>@(record.OperationItem.ProductionDate.ToShortDateString())</td>
                     <td>@record.Price</td>
-                    <td>@(record.Price*record.OperationNumber)</td>
+                    <td>@(record.Price * record.OperationNumber)</td>
                     <td>@record.Summary</td>
                 </tr>
             }
@@ -72,35 +70,39 @@ else
 @code {
     private ItemDbContext? Context;
     private List<Record>? Records;
+    private string? SearchText;
     protected override async Task OnInitializedAsync()
     {
-        try
+        Context = ItemDbContextFactory.CreateDbContext();
+        if (Context is not null && Context.Records is not null)
         {
-            Context = ItemDbContextFactory.CreateDbContext();
+            var saleRecords = await Context.Records.Where(r => r.OperationName == Operation.Sell).Include(r =>
+            r.OperationItem).ToListAsync();
 
-            if (Context is not null && Context.Records is not null)
+            if (saleRecords is not null)
             {
-                var saleRecords = await Context.Records.Where(r => r.OperationName == Operation.Sell).Include(r => r.OperationItem).ToListAsync();
-
-                if (saleRecords is not null)
-                {
-                    Records = saleRecords;
-                }
+                Records = saleRecords;
             }
         }
-        finally
-        {
-        }
-
         await base.OnInitializedAsync();
     }
-
-    @* async Task DownloadExcel()
-    {
-    } *@
 
     public void Dispose()
     {
         Context?.Dispose();
+    }
+
+    public async Task SearchAsync()
+    {
+        if (Context is not null && Context.Records is not null && SearchText is not null)
+        {
+            var saleRecords = await Context.Records.Where(r => r.OperationName == Operation.Sell && r.OperationItem.ProductName!.Contains(SearchText)).Include(r =>
+            r.OperationItem).ToListAsync();
+
+            if (saleRecords is not null)
+            {
+                Records = saleRecords;
+            }
+        }
     }
 }

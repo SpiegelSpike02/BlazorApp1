@@ -10,7 +10,7 @@ public class Item
     [DisplayName("商品编码"), Key]
     public required string ProductCode { get; set; }
     [DisplayName("品名")]
-    public string? ProductName { get; set; }
+    public required string ProductName { get; set; }
     [DisplayName("规格")]
     public string? Specs { get; set; }
     [DisplayName("厂家")]
