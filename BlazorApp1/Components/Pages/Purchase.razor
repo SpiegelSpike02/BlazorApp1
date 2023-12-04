@@ -6,17 +6,12 @@
 @using BlazorApp1.Data
 @using Microsoft.EntityFrameworkCore
 @inject IJSRuntime JS
-@inject IDbContextFactory<ItemDbContext> ItemDbContextFactory
+@inject IDbContextFactory<ProductDbContext> ProductDbContextFactory
 @implements IDisposable
 
+<PageTitle>采购流向</PageTitle>
 
-<PageTitle>入库流向</PageTitle>
-
-@* <button class="btn btn-primary" @onclick="DownloadExcel">
-导出流向
-</button> *@
-
-@if (Records == null)
+@if (Purchases == null)
 {
     <p><em>载入中...</em></p>
 }
@@ -25,44 +20,44 @@ else
     <table class="table">
     <thead>
         <tr class="table-success">
-            <th>入库日期</th>
-            <th>入库编号</th>
-            <th>供应商名称</th>
+            <th>采购日期</th>
+            <th>采购编号</th>
             <th>供应商编号</th>
+            <th>供应商名称</th>
             <th>商品编号</th>
             <th>商品名称</th>
             <th>商品规格</th>
             <th>生产厂家</th>
             <th>单位</th>
-            <th>入库数量</th>
             <th>商品批号</th>
             <th>有效日期</th>
             <th>生产日期</th>
             <th>进价</th>
+            <th>采购数量</th>
             <th>金额</th>
             <th>摘要</th>
         </tr>
     </thead>
     <tbody>
-        @foreach (var record in Records)
+        @foreach (var purchase in Purchases)
             {
                 <tr>
-                    <td>@(record.OperationDate.ToShortDateString())</td>
-                    <td>@record.OperationCode</td>
-                    <td>@record.OperationTarget</td>
-                    <td>@record.OperationTargetCode</td>
-                    <td>@record.OperationItem.ProductCode</td>
-                    <td>@record.OperationItem.ProductName</td>
-                    <td>@record.OperationItem.Specs</td>
-                    <td>@record.OperationItem.ProducerName</td>
-                    <td>@record.OperationItem.Unit</td>
-                    <td>@record.OperationNumber</td>
-                    <td>@record.OperationItem.BatchCode</td>
-                    <td>@(record.OperationItem.ValidityDate.ToShortDateString())</td>
-                    <td>@(record.OperationItem.ProductionDate.ToShortDateString())</td>
-                    <td>@record.Price</td>
-                    <td>@(record.Price * record.OperationNumber)</td>
-                    <td>@record.Summary</td>
+                    <td>@purchase.Date</td>
+                    <td>@purchase.Id</td>
+                    <td>@purchase.ProviderId</td>
+                    <td>@purchase.Provider.Name</td>
+                    <td>@purchase.ProductDetail.ProductId</td>
+                    <td>@purchase.ProductDetail.Product.Name</td>
+                    <td>@purchase.ProductDetail.Product.Specs</td>
+                    <td>@purchase.ProductDetail.Product.ProducerName</td>
+                    <td>@purchase.ProductDetail.Product.Unit</td>
+                    <td>@purchase.ProductDetailId</td>
+                    <td>@purchase.ProductDetail.ValidityDate</td>
+                    <td>@purchase.ProductDetail.ProductionDate</td>
+                    <td>@purchase.Price</td>
+                    <td>@purchase.Number</td>
+                    <td>@(purchase.Number * purchase.Price)</td>
+                    <td>@purchase.Summary</td>
                 </tr>
             }
         </tbody>
@@ -70,30 +65,26 @@ else
 }
 
 @code {
-    private ItemDbContext? Context;
-    private List<Record>? Records;
+    private ProductDbContext? Context;
+    private List<BlazorApp1.Data.Purchase>? Purchases;
     protected override async Task OnInitializedAsync()
     {
-
-        Context = ItemDbContextFactory.CreateDbContext();
-
-        if (Context is not null && Context.Records is not null)
+        Context = ProductDbContextFactory.CreateDbContext();
+        if (Context is not null && Context.Purchases is not null)
         {
-            var saleRecords = await Context.Records.Where(r => r.OperationName == Operation.Purchase).Include(r =>
-            r.OperationItem).ToListAsync();
+            var _ = await Context.Purchases
+            .Include(s => s.ProductDetail)
+            .Include(s => s.Provider)
+            .Include(s => s.ProductDetail.Product)
+            .ToListAsync();
 
-            if (saleRecords is not null)
+            if (_ is not null)
             {
-                Records = saleRecords;
+                Purchases = _;
             }
         }
-
         await base.OnInitializedAsync();
     }
-
-    @* async Task DownloadExcel()
-{
-} *@
 
     public void Dispose()
     {

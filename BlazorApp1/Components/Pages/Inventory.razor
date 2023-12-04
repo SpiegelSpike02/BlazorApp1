@@ -6,13 +6,13 @@
 @using BlazorApp1.Data
 @using Microsoft.EntityFrameworkCore
 @inject IJSRuntime JS
-@inject IDbContextFactory<ItemDbContext> ItemDbContextFactory
+@inject IDbContextFactory<ProductDbContext> ProductDbContextFactory
 @implements IDisposable
 
 
 <PageTitle>库存明细</PageTitle>
 
-@if (Items == null)
+@if (ProductDetails == null)
 {
     <p><em>载入中...</em></p>
 }
@@ -33,18 +33,18 @@ else
         </tr>
     </thead>
     <tbody>
-        @foreach (var item in Items)
+        @foreach (var productDetail in ProductDetails)
             {
                 <tr>
-                    <td>@item.ProductCode</td>
-                    <td>@item.ProductName</td>
-                    <td>@item.Specs</td>
-                    <td>@item.ProducerName</td>
-                    <td>@item.Unit</td>
-                    <td>@item.Number</td>
-                    <td>@item.BatchCode</td>
-                    <td>@(item.ValidityDate.ToShortDateString())</td>
-                    <td>@(item.ProductionDate.ToShortDateString())</td>
+                    <td>@productDetail.ProductId</td>
+                    <td>@productDetail.Product.Name</td>
+                    <td>@productDetail.Product.Specs</td>
+                    <td>@productDetail.Product.ProducerName</td>
+                    <td>@productDetail.Product.Unit</td>
+                    <td>@productDetail.Number</td>
+                    <td>@productDetail.Id</td>
+                    <td>@productDetail.ValidityDate</td>
+                    <td>@productDetail.ProductionDate</td>
                 </tr>
             }
         </tbody>
@@ -52,29 +52,26 @@ else
 }
 
 @code {
-    private ItemDbContext? Context;
-    private List<Item>? Items;
+    private ProductDbContext? Context;
+    private List<ProductDetail>? ProductDetails;
     protected override async Task OnInitializedAsync()
     {
 
-        Context = ItemDbContextFactory.CreateDbContext();
+        Context = ProductDbContextFactory.CreateDbContext();
 
-        if (Context is not null && Context.Items is not null)
+        if (Context is not null && Context.ProductDetails is not null)
         {
-            var _ = await Context.Items.ToListAsync();
+            var _ = await Context.ProductDetails.Include(d => d.Product).ToListAsync();
 
             if (_ is not null)
             {
-                Items = _;
+                ProductDetails = _;
             }
         }
 
         await base.OnInitializedAsync();
     }
 
-    @* async Task DownloadExcel()
-{
-} *@
 
     public void Dispose()
     {

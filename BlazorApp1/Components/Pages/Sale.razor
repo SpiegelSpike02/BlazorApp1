@@ -6,15 +6,12 @@
 @using BlazorApp1.Data
 @using Microsoft.EntityFrameworkCore
 @inject IJSRuntime JS
-@inject IDbContextFactory<ItemDbContext> ItemDbContextFactory
+@inject IDbContextFactory<ProductDbContext> ProductDbContextFactory
 @implements IDisposable
-
 
 <PageTitle>销售流向</PageTitle>
 
-<InputText @bind-Value="SearchText" @bind-Value:after="SearchAsync" />
-
-@if (Records == null)
+@if (Sales == null)
 {
     <p><em>载入中...</em></p>
 }
@@ -25,42 +22,42 @@ else
         <tr class="table-success">
             <th>销售日期</th>
             <th>销售编号</th>
-            <th>客户名称</th>
             <th>客户编号</th>
+            <th>客户名称</th>
             <th>商品编号</th>
             <th>商品名称</th>
             <th>商品规格</th>
             <th>生产厂家</th>
             <th>单位</th>
-            <th>销售数量</th>
             <th>商品批号</th>
             <th>有效日期</th>
             <th>生产日期</th>
             <th>售价</th>
+            <th>销售数量</th>
             <th>金额</th>
             <th>摘要</th>
         </tr>
     </thead>
     <tbody>
-        @foreach (var record in Records)
+        @foreach (var sale in Sales)
             {
                 <tr>
-                    <td>@(record.OperationDate.ToShortDateString())</td>
-                    <td>@record.OperationCode</td>
-                    <td>@record.OperationTarget</td>
-                    <td>@record.OperationTargetCode</td>
-                    <td>@record.OperationItem.ProductCode</td>
-                    <td>@record.OperationItem.ProductName</td>
-                    <td>@record.OperationItem.Specs</td>
-                    <td>@record.OperationItem.ProducerName</td>
-                    <td>@record.OperationItem.Unit</td>
-                    <td>@record.OperationNumber</td>
-                    <td>@record.OperationItem.BatchCode</td>
-                    <td>@(record.OperationItem.ValidityDate.ToShortDateString())</td>
-                    <td>@(record.OperationItem.ProductionDate.ToShortDateString())</td>
-                    <td>@record.Price</td>
-                    <td>@(record.Price * record.OperationNumber)</td>
-                    <td>@record.Summary</td>
+                    <td>@sale.Date</td>
+                    <td>@sale.Id</td>
+                    <td>@sale.CostumerId</td>
+                    <td>@sale.Costumer.Name</td>
+                    <td>@sale.ProductDetail.ProductId</td>
+                    <td>@sale.ProductDetail.Product.Name</td>
+                    <td>@sale.ProductDetail.Product.Specs</td>
+                    <td>@sale.ProductDetail.Product.ProducerName</td>
+                    <td>@sale.ProductDetail.Product.Unit</td>
+                    <td>@sale.ProductDetailId</td>
+                    <td>@sale.ProductDetail.ValidityDate</td>
+                    <td>@sale.ProductDetail.ProductionDate</td>
+                    <td>@sale.Price</td>
+                    <td>@sale.Number</td>
+                    <td>@(sale.Number * sale.Price)</td>
+                    <td>@sale.Summary</td>
                 </tr>
             }
         </tbody>
@@ -68,20 +65,22 @@ else
 }
 
 @code {
-    private ItemDbContext? Context;
-    private List<Record>? Records;
-    private string? SearchText;
+    private ProductDbContext? Context;
+    private List<BlazorApp1.Data.Sale>? Sales;
     protected override async Task OnInitializedAsync()
     {
-        Context = ItemDbContextFactory.CreateDbContext();
-        if (Context is not null && Context.Records is not null)
+        Context = ProductDbContextFactory.CreateDbContext();
+        if (Context is not null && Context.Sales is not null)
         {
-            var saleRecords = await Context.Records.Where(r => r.OperationName == Operation.Sell).Include(r =>
-            r.OperationItem).ToListAsync();
+            var _ = await Context.Sales
+            .Include(s => s.ProductDetail)
+            .Include(s => s.Costumer)
+            .Include(s => s.ProductDetail.Product)
+            .ToListAsync();
 
-            if (saleRecords is not null)
+            if (_ is not null)
             {
-                Records = saleRecords;
+                Sales = _;
             }
         }
         await base.OnInitializedAsync();
@@ -90,19 +89,5 @@ else
     public void Dispose()
     {
         Context?.Dispose();
-    }
-
-    public async Task SearchAsync()
-    {
-        if (Context is not null && Context.Records is not null && SearchText is not null)
-        {
-            var saleRecords = await Context.Records.Where(r => r.OperationName == Operation.Sell && r.OperationItem.ProductName!.Contains(SearchText)).Include(r =>
-            r.OperationItem).ToListAsync();
-
-            if (saleRecords is not null)
-            {
-                Records = saleRecords;
-            }
-        }
     }
 }

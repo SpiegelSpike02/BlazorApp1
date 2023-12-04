@@ -9,7 +9,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\BlazorApp1.Client\BlazorApp1.Client.csproj" />
-    <ProjectReference Include="..\BlazorApp1.Shared\BlazorApp1.Shared.csproj" />
     <PackageReference Include="EPPlus" Version="7.0.1" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="8.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="8.0.0" />
